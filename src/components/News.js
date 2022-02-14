@@ -1,7 +1,22 @@
 import React, { Component } from 'react';
 import NewsItem from './NewsItem';
+import { Spinner } from './Spinner';
+import PropTypes from 'prop-types';
 
 export default class News extends Component {
+
+    static defaultProps = {
+        country : 'in',
+        pageSize : 9,
+        category : 'general'
+    }
+
+    static propTypes = {
+        country : PropTypes.string,
+        pageSize : PropTypes.number,
+        category : PropTypes.string
+    }
+
     articles = [
         {
             "source":{"id":null,"name":"Daily Mail"},
@@ -68,47 +83,39 @@ export default class News extends Component {
         console.log("Constructor Called");
         super();
         this.state = {
-            articles : this.articles,
+            articles : [],
             page : 1,
-            pageSize : 21
+            loading : false
 
         }
     }
 
-    async componentDidMount(){
-        console.log("Component Mounted");
-        let url = `https://newsapi.org/v2/top-headlines?country=in&apiKey=a6b53dcb3838471ba2ba9b5bcddb12d6&page=1&pagesize=${this.state.pageSize}`;
+    async updateNews(){
+        let url = `https://newsapi.org/v2/top-headlines?country=${this.props.country}&category=${this.props.category}&apiKey=a6b53dcb3838471ba2ba9b5bcddb12d6&page=${this.state.page}&pagesize=${this.props.pageSize}`;
+        this.setState({loading : true})
         let data = await fetch(url);
         let parsedData = await data.json();
         console.log(parsedData.articles);
         this.setState({
             articles: parsedData.articles,
-            totalResults : parsedData.totalResults
-        });
-        // console.log("Showing Articles")
-        // console.log(this.state.articles)
-    }
-    
-    handlePrevClick = async ()=>{
-        let url = `https://newsapi.org/v2/top-headlines?country=in&apiKey=a6b53dcb3838471ba2ba9b5bcddb12d6&page=${this.state.page-1}&pagesize=${this.state.pageSize}`;
-        let data = await fetch(url);
-        let parsedData = await data.json();
-        console.log(parsedData.articles);
-        this.setState({
-            articles: parsedData.articles,
-            page : this.state.page-1
+            totalResults : parsedData.totalResults,
+            loading : false
         });
     }
 
+    async componentDidMount(){
+        console.log("Component Mounted");
+        this.updateNews();
+    }
+    
+    handlePrevClick = async ()=>{
+        this.setState({page : this.state.page-1});
+        this.updateNews();
+    }
+    
     handleNextClick = async ()=>{
-        let url = `https://newsapi.org/v2/top-headlines?country=in&apiKey=a6b53dcb3838471ba2ba9b5bcddb12d6&page=${this.state.page+1}&pagesize=${this.state.pageSize}`;
-        let data = await fetch(url);
-        let parsedData = await data.json();
-        console.log(parsedData.articles);
-        this.setState({
-            articles: parsedData.articles,
-            page : this.state.page+1
-        });
+        this.setState({page : this.state.page+1});
+        this.updateNews();
     }
 
     render() {
@@ -116,17 +123,18 @@ export default class News extends Component {
         return <div>
             <div className="container my-2">
                 <h1>ReadIt - Top Headlines</h1>
+                {this.state.loading &&  <Spinner/> }
                 <div className="row">
-                    {this.state.articles.map((newsElement)=>{
-                        return <div className="col-md-4" key={newsElement.url}>
-                            <NewsItem title={newsElement.title} desc={newsElement.description} imgUrl={newsElement.urlToImage?newsElement.urlToImage:this.noImgLink} url={newsElement.url}/>
+                    {!this.state.loading && this.state.articles.map((newsElement)=>{
+                        return <div className="col-xl-3" key={newsElement.url}>
+                            <NewsItem title={newsElement.title} desc={newsElement.description} date={newsElement.publishedAt} imgUrl={newsElement.urlToImage?newsElement.urlToImage:this.noImgLink} url={newsElement.url} source={newsElement.source.name}/>
                         </div>
                     })}
                 </div>
             </div>
             <div className="container d-flex justify-content-between">
-            <button disabled={this.state.page<=1} type="button" class="btn btn-secondary" onClick={this.handlePrevClick}>&larr; Previous</button>
-            <button disabled={this.state.page+1 > Math.ceil(this.state.totalResults/21)} type="button" class="btn btn-secondary" onClick={this.handleNextClick}>Next &rarr;</button>
+            {!this.state.loading && <button disabled={this.state.page<=1} type="button" className="btn btn-secondary" onClick={this.handlePrevClick}>&larr; Previous</button>}
+            {!this.state.loading && <button disabled={this.state.page+1 > Math.ceil(this.state.totalResults/21)} type="button" className="btn btn-secondary" onClick={this.handleNextClick}>Next &rarr;</button>}
             </div>
         </div>;
     }
